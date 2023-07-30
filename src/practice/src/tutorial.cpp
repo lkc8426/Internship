@@ -400,6 +400,7 @@ int main(int argc,char ** argv){
     ros::init(argc, argv, "trajectory");
     tracking tr;
 
+
     tr.WayPointCreate();
     tr.WaypointVisualize();
     ros::Rate loop_rate(10);
@@ -411,7 +412,6 @@ int main(int argc,char ** argv){
 
         ros::spinOnce();
         loop_rate.sleep();
-
     }
     return 0;
 }
