@@ -1,2 +1,2 @@
-carla_msgs:practice:waypoint_node
+carla_msgs:practice:project:waypoint_node
 -DCATKIN_DEVEL_PREFIX=/home/kichang/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/kichang/catkin_ws/install -G Unix Makefiles

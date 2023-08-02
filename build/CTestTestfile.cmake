@@ -7,4 +7,5 @@
 subdirs("gtest")
 subdirs("carla_msgs")
 subdirs("practice")
+subdirs("project")
 subdirs("waypoint_node")

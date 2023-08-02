@@ -133,6 +133,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/kichang/catkin_ws/build/gtest/cmake_install.cmake")
   include("/home/kichang/catkin_ws/build/carla_msgs/cmake_install.cmake")
   include("/home/kichang/catkin_ws/build/practice/cmake_install.cmake")
+  include("/home/kichang/catkin_ws/build/project/cmake_install.cmake")
   include("/home/kichang/catkin_ws/build/waypoint_node/cmake_install.cmake")
 
 endif()
