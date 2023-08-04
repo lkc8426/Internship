@@ -131,7 +131,6 @@ add_executable(pointcloud src/lidar_practice.cpp)
 add_dependencies(pointcloud ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(pointcloud ${catkin_LIBRARIES})
 
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure

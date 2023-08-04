@@ -316,7 +316,7 @@ void tracking::SpeedCallback(const std_msgs::Float32::ConstPtr& msg){
 
 void tracking::PidControl(double velocity){
    target_velocity = 35;
-   Kp = 0.02;
+   Kp = 0.01;
    Ki = 0.005;
    Kd = 0.007;
 
