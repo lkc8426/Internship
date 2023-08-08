@@ -13,36 +13,28 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/kdtree/kdtree.h>
 
-class LidarProject{
+// #include "project/recFitting.h"
 
-    ros::Publisher voxel_pub;
-    ros::Subscriber voxel_sub;
+class LidarProject{
     ros::NodeHandle nh;
 
-    ros::Publisher ransac_pub;
-    ros::Subscriber ransac_sub;
+    ros::Publisher output_pub;
+    ros::Subscriber lidar_sub;
 
-    ros::Publisher cluster_pub;
-    ros::Subscriber cluster_sub;
 
 public:
     LidarProject();
 
-    void Voxelization(); //아직 안 씀
-    void voxel_callback(const sensor_msgs::PointCloud2ConstPtr& voxel_msg);
-    void ransac_callback(const sensor_msgs::PointCloud2ConstPtr& ransac_msg);
-    void cluster_callback(const sensor_msgs::PointCloud2ConstPtr& ransac_msg);
+    void voxel_cb(const sensor_msgs::PointCloud2ConstPtr& ransac_msg);
+    void ransac(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& filter_cloud);
+    void Clustering(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& inlierPoint_neg);
 };
 
 LidarProject::LidarProject(){
-    //voxel_pub = nh.advertise<sensor_msgs::PointCloud2>("Voxelization",1);
-    //voxel_sub = nh.subscribe("/carla/ego_vehicle/lidar",1, &LidarProject::voxel_callback, this);
 
-    ransac_sub = nh.subscribe("/carla/ego_vehicle/lidar",1, &LidarProject::ransac_callback, this);
-    ransac_pub = nh.advertise<sensor_msgs::PointCloud2>("RANSAC",1);
+    lidar_sub = nh.subscribe("/carla/ego_vehicle/lidar",1, &LidarProject::voxel_cb, this);
+    output_pub = nh.advertise<sensor_msgs::PointCloud2>("output",1);
 
-    //cluster_sub = nh.subscribe("/carla/ego_vehicle/lidar",1, &LidarProject::cluster_callback, this);
-    //cluster_pub = nh.advertise<sensor_msgs::PointCloud2>("Cluster",1);
 }
 
 /*
@@ -66,20 +58,23 @@ void LidarProject::voxel_callback(const sensor_msgs::PointCloud2ConstPtr& voxel_
 */
 
 // ------------------- Voxel+Ransac+clustering -------------------------------
-void LidarProject::ransac_callback(const sensor_msgs::PointCloud2ConstPtr& ransac_msg){  
+void LidarProject::voxel_cb(const sensor_msgs::PointCloud2ConstPtr& ransac_msg){  
   pcl::PointCloud<pcl::PointXYZ> cloud;
   pcl::fromROSMsg(*ransac_msg, cloud);
 
   pcl::VoxelGrid<pcl::PointXYZ> vg;
   pcl::PointCloud<pcl::PointXYZ>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  vg.setInputCloud(cloud.makeShared());
+  vg.setInputCloud(cloud.makeShared()); //point cloud 객체에 shared_pointer 생성
   vg.setLeafSize(0.3, 0.3, 0.3);
   vg.filter(*filter_cloud);
 
+  ransac(filter_cloud);
+}
+
+void LidarProject::ransac(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& filter_cloud){
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-  
-  pcl::PointCloud<pcl::PointXYZ>::Ptr inlierPoints(new pcl::PointCloud<pcl::PointXYZ>());
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr inlierPoints_neg(new pcl::PointCloud<pcl::PointXYZ>());
 
   // SACSegmentation 을 위해서 seg 를 만들고 방법과 모델과 기준을 정함
@@ -87,7 +82,7 @@ void LidarProject::ransac_callback(const sensor_msgs::PointCloud2ConstPtr& ransa
   seg.setOptimizeCoefficients(true);
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.01);
+  seg.setDistanceThreshold(0.03);
   seg.setMaxIterations(100);
 
   seg.setInputCloud(filter_cloud);
@@ -99,15 +94,18 @@ void LidarProject::ransac_callback(const sensor_msgs::PointCloud2ConstPtr& ransa
   extract.setIndices(inliers);
   extract.setNegative(true);           //바닥제거하기 위해 inlier를 없앤다
 
-
   extract.filter(*inlierPoints_neg);
 
+  Clustering(inlierPoints_neg);
+}
+
+void LidarProject::Clustering(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& inlierPoints_neg){
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
   tree->setInputCloud (inlierPoints_neg);
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance (0.5);
+  ec.setClusterTolerance (0.8);
   ec.setMinClusterSize (15);
   ec.setMaxClusterSize (25000);
   ec.setSearchMethod (tree);
@@ -137,8 +135,11 @@ void LidarProject::ransac_callback(const sensor_msgs::PointCloud2ConstPtr& ransa
   
   sensor_msgs::PointCloud2 output; 
   pcl_conversions::fromPCL(cloud_p, output);
-  output.header.frame_id = "ego_vehicle";   
-  ransac_pub.publish(output); 
+  output.header.frame_id = "ego_vehicle/lidar";
+
+
+  output_pub.publish(output); 
+
 }
 
 /*
